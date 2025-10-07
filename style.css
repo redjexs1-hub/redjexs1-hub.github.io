@@ -22,9 +22,10 @@ body {
 }
 
 .rectangle {
-    width: 400px;
-    height: 550px;
+    width: 300px;
+    height: 450px;
     background-color: rgb(17, 17, 17);
     border-radius: 25px;
     box-sizing: border-box; /* Ensures padding/border are included in dimensions */
+
 }
