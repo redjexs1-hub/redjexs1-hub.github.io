@@ -1,0 +1,30 @@
+body {
+    margin: 0;
+    min-height: 100vh; /* Ensures body covers full viewport height */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #f0f0f0;
+    background-image: url('img/background1.png');
+    background-size: cover; /* Stretches background to cover entire viewport */
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed; /* Keeps background fixed during scroll */
+}
+
+.wrapper {
+    min-height: calc(100vh - 100px); /* Ensures wrapper respects 50px top/bottom margins */
+    margin: 50px 0; /* 50px margin top and bottom */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow-y: auto; /* Enables vertical scrolling if rectangle exceeds viewport */
+}
+
+.rectangle {
+    width: 400px;
+    height: 550px;
+    background-color: rgb(17, 17, 17);
+    border-radius: 25px;
+    box-sizing: border-box; /* Ensures padding/border are included in dimensions */
+}
