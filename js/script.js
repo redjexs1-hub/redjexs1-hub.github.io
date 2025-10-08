@@ -27,4 +27,21 @@ function setRandomOverlayBackground() {
     overlay.style.background = `radial-gradient(circle at center, #${centerColor} 0%, #${edgeColor} 100%)`;
 }
 
-window.onload = setRandomOverlayBackground;
+window.onload = () => {
+    setRandomOverlayBackground();
+    const overlayImage = document.querySelector('.overlay-image');
+    overlayImage.classList.add('play-on-load');
+    overlayImage.addEventListener('animationend', () => {
+        overlayImage.classList.remove('play-on-load');
+    }, { once: true });
+
+    overlayImage.addEventListener('mouseenter', () => {
+        if (!overlayImage.classList.contains('animate-on-hover')) {
+            overlayImage.classList.add('animate-on-hover');
+        }
+    });
+
+    overlayImage.addEventListener('animationend', () => {
+        overlayImage.classList.remove('animate-on-hover');
+    });
+};

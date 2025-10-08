@@ -68,7 +68,14 @@ body {
     max-height: 85%;
     object-fit: contain;
     z-index: 4;
-    animation: pulse-and-sway 2s ease-in-out infinite;
+}
+
+.overlay-image.play-on-load {
+    animation: pulse-and-sway 2s ease-in-out 1;
+}
+
+.overlay-image.animate-on-hover {
+    animation: pulse-and-sway 2s ease-in-out 1;
 }
 
 @media (max-width: 768px) {
@@ -84,7 +91,7 @@ body {
     40% {
         transform: scale(1.05) rotate(-4deg);
     }
-    75%{
+    75% {
         transform: scale(1.05) rotate(4deg);
     }
     100% {
