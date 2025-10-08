@@ -68,10 +68,26 @@ body {
     max-height: 85%;
     object-fit: contain;
     z-index: 4;
+    animation: pulse-and-sway 2s ease-in-out infinite;
 }
 
 @media (max-width: 768px) {
     .overlay {
         height: 200px;
+    }
+}
+
+@keyframes pulse-and-sway {
+    0% {
+        transform: scale(1) rotate(0deg);
+    }
+    40% {
+        transform: scale(1.05) rotate(-4deg);
+    }
+    75%{
+        transform: scale(1.05) rotate(4deg);
+    }
+    100% {
+        transform: scale(1) rotate(0deg);
     }
 }
