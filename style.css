@@ -22,10 +22,17 @@ body {
 }
 
 .rectangle {
-    width: 300px;
-    height: 500px;
+    width: 450px;
+    height: 600px;
     background-color: rgb(17, 17, 17);
     border-radius: 25px;
     box-sizing: border-box; /* Ensures padding/border are included in dimensions */
 }
 
+/* Mobile devices (screens 768px or narrower) */
+@media (max-width: 768px) {
+    .rectangle {
+        width: 250px;
+        height: 500px;
+    }
+}
