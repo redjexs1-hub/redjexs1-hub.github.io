@@ -32,7 +32,8 @@ body {
 /* Mobile devices (screens 768px or narrower) */
 @media (max-width: 768px) {
     .rectangle {
-        width: 250px;
+        width: 325px;
         height: 500px;
     }
 }
+
