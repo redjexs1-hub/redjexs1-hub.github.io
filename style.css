@@ -22,7 +22,7 @@ body {
 }
 
 .rectangle {
-    width: 350px;
+    width: 250px;
     height: 500px;
     background-color: rgb(17, 17, 17);
     border-radius: 25px;
