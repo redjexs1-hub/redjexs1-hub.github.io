@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Фотомозаика из папки img/</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+  <div class="container">
+    <h1>Создать постер из телеграм подарков</h1>
+
+    <!-- Главное изображение -->
+    <div class="drop-zone" id="mainDrop">
+      <p>Перетащите сюда главное фото или <label class="file-label">выберите файл<input type="file" id="mainImage" accept="image/*"/></label></p>
+      <div id="mainPreview"></div>
+    </div>
+
+    <!-- Статус тайлов -->
+    <div class="tiles-status">
+      <div id="tilesStatus">Загрузка тайлов из папки img/...</div>
+      <div id="tilesProgress" class="progress-small">
+        <div class="bar"></div>
+      </div>
+    </div>
+
+    <!-- Настройки -->
+    <div class="settings">
+      <label>Размер тайла: <input type="range" id="tileSize" min="16" max="80" value="32"> <span id="tileSizeValue">32</span>px</label>
+      <label><input type="checkbox" id="reuseTiles" checked> Повторять тайлы</label>
+      <label>Ширина мозаики: <input type="number" id="outputWidth" value="1500" min="800" max="4000"> px</label>
+    </div>
+
+    <button id="createBtn" disabled>Создать картинку</button>
+
+    <div id="assemblyProgress" class="progress-container" style="display:none;">
+      <div>Сборка мозаики: <span id="progressPercent">0%</span></div>
+      <div class="progress-bar"><div id="assemblyBar"></div></div>
+    </div>
+
+    <div id="result">
+      <canvas id="mosaicCanvas"></canvas>
+      <div id="downloadSection" style="display:none; margin-top: 15px;">
+        <a id="downloadLink" class="download-btn" download="фотомозаика.jpg">Скачать мозаику</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
