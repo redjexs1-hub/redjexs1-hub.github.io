@@ -1,0 +1,1032 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Конструктор схем · Arduino Learn</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400&family=Unbounded:wght@700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0a0a;--bg2:#111;--bg3:#161616;
+  --border:#1e1e1e;--border2:#2a2a2a;
+  --text:#e8e8e8;--muted:#555;--muted2:#888;
+  --accent:#c8ff00;--accent-d:rgba(200,255,0,.08);
+  --font-head:'Unbounded',sans-serif;
+  --font-mono:'DM Mono',monospace;
+  --red:#ff5252;--blue:#4d9fff;--orange:#ff9500;
+  --green:#30d060;--white:#e8e8e8;--magenta:#ff44cc;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font-mono);font-size:13px;overflow:hidden}
+
+/* ── Layout ──────────────────────────────────── */
+#sandbox{display:flex;flex-direction:column;height:100vh}
+
+/* ── Header ──────────────────────────────────── */
+.sb-hdr{
+  display:flex;align-items:center;gap:8px;padding:9px 14px;
+  border-bottom:1px solid var(--border);background:var(--bg2);
+  flex-shrink:0;flex-wrap:wrap;min-height:48px;
+}
+.sb-title{
+  font-family:var(--font-head);font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--accent);flex:1;white-space:nowrap;
+}
+.hdr-btn{
+  padding:5px 12px;border:1px solid var(--border2);background:none;
+  color:var(--muted2);border-radius:20px;font-size:10px;cursor:pointer;
+  font-family:var(--font-mono);letter-spacing:.06em;transition:all .18s;
+  white-space:nowrap;
+}
+.hdr-btn:hover{border-color:var(--border2);color:var(--text)}
+.hdr-btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent-d)}
+.hdr-btn.danger:hover{border-color:var(--red);color:var(--red)}
+.hdr-btn.primary{border-color:var(--accent);color:#000;background:var(--accent);font-weight:bold}
+.hdr-btn.primary:hover{background:#d6ff1a}
+.hdr-btn:disabled{opacity:.45;pointer-events:none}
+
+/* Wire color swatches */
+.wire-swatch{
+  width:16px;height:16px;border-radius:50%;cursor:pointer;
+  border:2px solid transparent;transition:border-color .15s;flex-shrink:0;
+}
+.wire-swatch.sel{border-color:var(--text)}
+.wire-label{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+
+/* ── Main body ───────────────────────────────── */
+.sb-main{display:flex;flex:1;overflow:hidden}
+
+/* ── Palette ─────────────────────────────────── */
+.sb-palette{
+  width:108px;flex-shrink:0;border-right:1px solid var(--border);
+  background:var(--bg2);overflow-y:auto;padding:6px;
+  display:flex;flex-direction:column;gap:3px;scrollbar-width:none;
+}
+.sb-palette::-webkit-scrollbar{display:none}
+.pal-sec{font-size:8px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);padding:8px 4px 2px}
+.pal-item{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:7px 4px;border:1px solid var(--border);border-radius:8px;
+  cursor:pointer;transition:all .18s;text-align:center;
+  font-size:9px;color:var(--muted2);user-select:none;-webkit-user-select:none;
+}
+.pal-item:hover{border-color:var(--border2);background:var(--bg3);color:var(--text)}
+.pal-item:active{transform:scale(.95)}
+
+/* ── Canvas ──────────────────────────────────── */
+.sb-canvas{
+  flex:1;position:relative;overflow:hidden;
+  background-image:
+    radial-gradient(circle at 50% 30%,rgba(200,255,0,.012) 0%,transparent 60%),
+    linear-gradient(var(--border) 1px,transparent 1px),
+    linear-gradient(90deg,var(--border) 1px,transparent 1px);
+  background-size:auto,28px 28px,28px 28px;
+  cursor:default;
+}
+.sb-canvas.wire-mode{cursor:crosshair}
+#circuit-svg{width:100%;height:100%;overflow:visible}
+
+/* ── SVG component styles ────────────────────── */
+.comp-g{cursor:move;user-select:none;-webkit-user-select:none}
+.comp-g.wire-mode{cursor:default}
+.comp-sel-ring{fill:none;stroke:var(--accent);stroke-width:1.5;stroke-dasharray:4 3;opacity:0;pointer-events:none}
+.comp-g.selected .comp-sel-ring{opacity:.7}
+
+.pin-hit{fill:transparent;stroke:transparent;cursor:pointer;r:7}
+.pin-dot{pointer-events:none;r:3.5;fill:var(--border2);stroke:var(--muted);stroke-width:1;transition:all .12s}
+.pin-ring{pointer-events:none;r:7;fill:none;stroke:transparent;stroke-width:1.5;transition:all .12s}
+.comp-g .pin-hit:hover ~ .pin-ring,
+.pin-hit:focus ~ .pin-ring{stroke:var(--accent);stroke-opacity:.5}
+.pin-dot.hi{fill:var(--accent);stroke:var(--accent);r:4}
+.pin-ring.hi{stroke:rgba(200,255,0,.4);stroke-width:7}
+
+.del-btn{cursor:pointer;opacity:0;transition:opacity .15s}
+.comp-g:hover .del-btn{opacity:1}
+
+.wire-path{stroke-width:1.8;fill:none;stroke-linecap:round;cursor:pointer;transition:stroke-width .1s,opacity .1s}
+.wire-path:hover{stroke-width:3;opacity:1!important}
+.wire-preview{fill:none;stroke-linecap:round;stroke-dasharray:6 4;pointer-events:none;opacity:.55}
+
+/* ── Task banner ─────────────────────────────── */
+.sb-task{
+  padding:8px 14px;
+  background:rgba(200,255,0,.05);
+  border-bottom:1px solid rgba(200,255,0,.12);
+  display:flex;align-items:flex-start;gap:10px;
+  font-size:11px;line-height:1.55;flex-shrink:0;
+}
+.sb-task-icon{
+  width:22px;height:22px;border-radius:6px;
+  background:rgba(200,255,0,.12);border:1px solid rgba(200,255,0,.2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:bold;color:#c8ff00;flex-shrink:0;margin-top:1px;
+}
+.sb-task-label{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:rgba(200,255,0,.5);margin-bottom:2px;}
+.sb-task-text{color:#c0c0c0;}
+.sb-task-text strong{color:#e8e8e8;}
+.sb-task-close{
+  margin-left:auto;background:none;border:none;color:var(--muted);
+  font-size:14px;cursor:pointer;padding:0 2px;line-height:1;flex-shrink:0;
+  transition:color .15s;
+}
+.sb-task-close:hover{color:var(--text)}
+.sb-code{
+  height:42%;border-top:1px solid var(--border);
+  background:var(--bg2);display:flex;flex-direction:column;flex-shrink:0;
+}
+.code-hdr{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:7px 14px;border-bottom:1px solid var(--border);
+  font-size:9px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted);flex-shrink:0;gap:8px;flex-wrap:wrap;
+}
+.code-hdr-r{display:flex;align-items:center;gap:8px}
+#code-editor{
+  flex:1;background:var(--bg);color:#c9d1d9;border:none;outline:none;
+  font-family:var(--font-mono);font-size:12px;line-height:1.7;
+  padding:12px 14px;resize:none;tab-size:2;overflow-y:auto;
+}
+#code-editor::-webkit-scrollbar{width:3px}
+#code-editor::-webkit-scrollbar-thumb{background:var(--border2)}
+#check-result{
+  padding:10px 14px;font-size:12px;line-height:1.65;
+  border-top:1px solid var(--border);color:var(--text);
+  max-height:130px;overflow-y:auto;background:var(--bg3);display:none;
+}
+#check-result.loading{color:var(--muted2)}
+#check-result.ok{border-left:3px solid var(--accent);padding-left:11px}
+#check-result.warn{border-left:3px solid var(--orange);padding-left:11px}
+#check-result.err{border-left:3px solid var(--red);padding-left:11px}
+</style>
+</head>
+<body>
+<div id="sandbox">
+
+  <!-- Header -->
+  <div class="sb-hdr">
+    <span class="sb-title">⚡ Конструктор схем</span>
+
+    <!-- Wire color row -->
+    <span class="wire-label">Провод:</span>
+    <div id="color-swatches" style="display:flex;gap:5px;align-items:center"></div>
+
+    <button class="hdr-btn" id="wire-btn" onclick="toggleWireMode()">○ Провода</button>
+    <button class="hdr-btn danger" onclick="clearAll()">✕ Очистить</button>
+    <button class="hdr-btn primary" id="check-btn" onclick="checkCode()">▶ Проверить</button>
+  </div>
+
+  <!-- Task banner (shown when task param is present) -->
+  <div class="sb-task" id="task-banner" style="display:none">
+    <div class="sb-task-icon">!</div>
+    <div style="flex:1">
+      <div class="sb-task-label">Задание</div>
+      <div class="sb-task-text" id="task-text"></div>
+    </div>
+    <button class="sb-task-close" onclick="document.getElementById('task-banner').style.display='none'" title="Скрыть">×</button>
+  </div>
+
+  <!-- Main -->
+  <div class="sb-main">
+
+    <!-- Palette -->
+    <div class="sb-palette">
+      <div class="pal-sec">Питание</div>
+      <div class="pal-item" onclick="addComp('arduino')">
+        <svg width="46" height="64" viewBox="0 0 90 130">
+          <rect width="90" height="130" rx="4" fill="#1b6e2e" stroke="#2d9e45" stroke-width="2"/>
+          <rect x="22" y="42" width="46" height="46" rx="3" fill="#111" stroke="#222"/>
+          <text x="45" y="14" font-size="7" fill="#777" text-anchor="middle" font-family="monospace">ARDUINO</text>
+          <text x="45" y="68" font-size="11" fill="#c8ff00" text-anchor="middle" font-family="monospace" font-weight="bold">UNO</text>
+          <rect x="2" y="95" width="18" height="28" rx="2" fill="#111"/>
+        </svg>
+        Arduino UNO
+      </div>
+
+      <div class="pal-sec">Базовые</div>
+      <div class="pal-item" onclick="addComp('breadboard')">
+        <svg width="46" height="26" viewBox="0 0 200 110">
+          <rect width="200" height="110" rx="5" fill="#d8d0b0" stroke="#b8b090"/>
+          <line x1="12" y1="9" x2="188" y2="9" stroke="rgba(255,40,40,.5)" stroke-width="3"/>
+          <line x1="12" y1="101" x2="188" y2="101" stroke="rgba(40,40,255,.5)" stroke-width="3"/>
+          <rect x="10" y="52" width="180" height="6" fill="#c4bc98"/>
+          <circle cx="30" cy="32" r="2.5" fill="#444"/>
+          <circle cx="50" cy="32" r="2.5" fill="#444"/>
+          <circle cx="70" cy="32" r="2.5" fill="#444"/>
+          <circle cx="90" cy="32" r="2.5" fill="#444"/>
+          <circle cx="110" cy="32" r="2.5" fill="#444"/>
+          <circle cx="130" cy="32" r="2.5" fill="#444"/>
+          <circle cx="150" cy="32" r="2.5" fill="#444"/>
+          <circle cx="170" cy="32" r="2.5" fill="#444"/>
+          <circle cx="30" cy="75" r="2.5" fill="#444"/>
+          <circle cx="50" cy="75" r="2.5" fill="#444"/>
+          <circle cx="70" cy="75" r="2.5" fill="#444"/>
+          <circle cx="90" cy="75" r="2.5" fill="#444"/>
+          <circle cx="110" cy="75" r="2.5" fill="#444"/>
+          <circle cx="130" cy="75" r="2.5" fill="#444"/>
+          <circle cx="150" cy="75" r="2.5" fill="#444"/>
+          <circle cx="170" cy="75" r="2.5" fill="#444"/>
+        </svg>
+        Макетная плата
+      </div>
+
+      <div class="pal-sec">Светодиоды</div>
+      <div class="pal-item" onclick="addComp('led','red')">
+        <svg width="20" height="30" viewBox="0 0 24 38"><ellipse cx="12" cy="12" rx="10" ry="12" fill="#ff3a3a"/><ellipse cx="9" cy="9" rx="3" ry="3.5" fill="rgba(255,255,255,.25)"/><line x1="8" y1="24" x2="8" y2="38" stroke="#888" stroke-width="2"/><line x1="16" y1="24" x2="16" y2="38" stroke="#888" stroke-width="2"/></svg>
+        LED Красный
+      </div>
+      <div class="pal-item" onclick="addComp('led','green')">
+        <svg width="20" height="30" viewBox="0 0 24 38"><ellipse cx="12" cy="12" rx="10" ry="12" fill="#2eee60"/><ellipse cx="9" cy="9" rx="3" ry="3.5" fill="rgba(255,255,255,.25)"/><line x1="8" y1="24" x2="8" y2="38" stroke="#888" stroke-width="2"/><line x1="16" y1="24" x2="16" y2="38" stroke="#888" stroke-width="2"/></svg>
+        LED Зелёный
+      </div>
+      <div class="pal-item" onclick="addComp('led','yellow')">
+        <svg width="20" height="30" viewBox="0 0 24 38"><ellipse cx="12" cy="12" rx="10" ry="12" fill="#ffe020"/><ellipse cx="9" cy="9" rx="3" ry="3.5" fill="rgba(255,255,255,.25)"/><line x1="8" y1="24" x2="8" y2="38" stroke="#888" stroke-width="2"/><line x1="16" y1="24" x2="16" y2="38" stroke="#888" stroke-width="2"/></svg>
+        LED Жёлтый
+      </div>
+      <div class="pal-item" onclick="addComp('led','blue')">
+        <svg width="20" height="30" viewBox="0 0 24 38"><ellipse cx="12" cy="12" rx="10" ry="12" fill="#4d9fff"/><ellipse cx="9" cy="9" rx="3" ry="3.5" fill="rgba(255,255,255,.25)"/><line x1="8" y1="24" x2="8" y2="38" stroke="#888" stroke-width="2"/><line x1="16" y1="24" x2="16" y2="38" stroke="#888" stroke-width="2"/></svg>
+        LED Синий
+      </div>
+
+      <div class="pal-sec">Компоненты</div>
+      <div class="pal-item" onclick="addComp('r220')">
+        <svg width="46" height="14" viewBox="0 0 60 16">
+          <line x1="0" y1="8" x2="12" y2="8" stroke="#888" stroke-width="2"/>
+          <rect x="12" y="2" width="36" height="12" rx="4" fill="#d4a26a" stroke="#b8883a"/>
+          <rect x="17" y="2" width="3.5" height="12" fill="#c00" rx=".5"/>
+          <rect x="22.5" y="2" width="3.5" height="12" fill="#c00" rx=".5"/>
+          <rect x="28" y="2" width="3.5" height="12" fill="#5a3200" rx=".5"/>
+          <rect x="39" y="2" width="3" height="12" fill="#d4aa00" rx=".5"/>
+          <line x1="48" y1="8" x2="60" y2="8" stroke="#888" stroke-width="2"/>
+        </svg>
+        Резистор 220Ω
+      </div>
+      <div class="pal-item" onclick="addComp('r10k')">
+        <svg width="46" height="14" viewBox="0 0 60 16">
+          <line x1="0" y1="8" x2="12" y2="8" stroke="#888" stroke-width="2"/>
+          <rect x="12" y="2" width="36" height="12" rx="4" fill="#d4a26a" stroke="#b8883a"/>
+          <rect x="17" y="2" width="3.5" height="12" fill="#c4a000" rx=".5"/>
+          <rect x="22.5" y="2" width="3.5" height="12" fill="#111" rx=".5"/>
+          <rect x="28" y="2" width="3.5" height="12" fill="#c4a000" rx=".5"/>
+          <rect x="39" y="2" width="3" height="12" fill="#d4aa00" rx=".5"/>
+          <line x1="48" y1="8" x2="60" y2="8" stroke="#888" stroke-width="2"/>
+        </svg>
+        Резистор 10кΩ
+      </div>
+      <div class="pal-item" onclick="addComp('buzzer')">
+        <svg width="28" height="28" viewBox="0 0 36 38">
+          <ellipse cx="18" cy="18" rx="16" ry="16" fill="#111" stroke="#333" stroke-width="1.5"/>
+          <ellipse cx="18" cy="18" rx="11" ry="11" fill="#1a1a1a" stroke="#444"/>
+          <ellipse cx="18" cy="18" rx="5" ry="5" fill="#222" stroke="#555"/>
+          <ellipse cx="18" cy="18" rx="2" ry="2" fill="#3a3a3a"/>
+          <line x1="11" y1="34" x2="11" y2="38" stroke="#888" stroke-width="2"/>
+          <line x1="25" y1="34" x2="25" y2="38" stroke="#888" stroke-width="2"/>
+        </svg>
+        Пьезопищалка
+      </div>
+      <div class="pal-item" onclick="addComp('button')">
+        <svg width="28" height="28" viewBox="0 0 32 32">
+          <rect x="4" y="4" width="24" height="24" rx="3" fill="#1a1a1a" stroke="#3a3a3a" stroke-width="1.5"/>
+          <circle cx="16" cy="16" r="8" fill="#2a2a2a" stroke="#4a4a4a" stroke-width="1.5"/>
+          <circle cx="16" cy="16" r="4" fill="#3a3a3a"/>
+        </svg>
+        Кнопка
+      </div>
+      <div class="pal-item" onclick="addComp('potmeter')">
+        <svg width="28" height="32" viewBox="0 0 36 42">
+          <rect x="2" y="8" width="32" height="24" rx="3" fill="#1a1a1a" stroke="#333" stroke-width="1.5"/>
+          <circle cx="18" cy="20" r="10" fill="#222" stroke="#444" stroke-width="1.5"/>
+          <circle cx="18" cy="20" r="5" fill="#2a2a2a"/>
+          <line x1="18" y1="11" x2="18" y2="17" stroke="#c8ff00" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="2" y1="30" x2="2" y2="40" stroke="#888" stroke-width="1.5"/>
+          <line x1="18" y1="32" x2="18" y2="42" stroke="#888" stroke-width="1.5"/>
+          <line x1="34" y1="30" x2="34" y2="40" stroke="#888" stroke-width="1.5"/>
+        </svg>
+        Потенциометр
+      </div>
+      <div class="pal-item" onclick="addComp('photoresistor')">
+        <svg width="36" height="18" viewBox="0 0 60 22">
+          <line x1="0" y1="11" x2="10" y2="11" stroke="#888" stroke-width="2"/>
+          <rect x="10" y="3" width="40" height="16" rx="4" fill="#d4a26a" stroke="#b8883a"/>
+          <text x="30" y="14" font-size="8" fill="#444" text-anchor="middle" font-family="monospace" font-weight="bold">LDR</text>
+          <path d="M12 0 L18 6" stroke="#ffee00" stroke-width="1.5" stroke-linecap="round"/>
+          <path d="M20 0 L26 6" stroke="#ffee00" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="50" y1="11" x2="60" y2="11" stroke="#888" stroke-width="2"/>
+        </svg>
+        Фоторезистор
+      </div>
+      <div class="pal-item" onclick="addComp('dht11')">
+        <svg width="30" height="32" viewBox="0 0 40 44">
+          <rect x="0" y="0" width="40" height="36" rx="4" fill="#1650c8" stroke="#2060e8" stroke-width="1.5"/>
+          <rect x="4" y="4" width="32" height="28" rx="2" fill="#1040a0" stroke="none"/>
+          <text x="20" y="22" font-size="8" fill="#88aaff" text-anchor="middle" font-family="monospace" font-weight="bold">DHT11</text>
+          <line x1="8"  y1="36" x2="8"  y2="44" stroke="#888" stroke-width="2"/>
+          <line x1="20" y1="36" x2="20" y2="44" stroke="#888" stroke-width="2"/>
+          <line x1="32" y1="36" x2="32" y2="44" stroke="#888" stroke-width="2"/>
+        </svg>
+        Датчик DHT11
+      </div>
+    </div>
+
+    <!-- Canvas -->
+    <div class="sb-canvas" id="canvas-wrap">
+      <svg id="circuit-svg">
+        <g id="wires-layer"></g>
+        <g id="preview-layer"></g>
+        <g id="comps-layer"></g>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Code section -->
+  <div class="sb-code">
+    <div class="code-hdr">
+      <span>💻 Код · Arduino C++</span>
+      <div class="code-hdr-r">
+        <span style="color:var(--muted);font-size:9px">Tab = 2 пробела</span>
+      </div>
+    </div>
+    <textarea id="code-editor" spellcheck="false" placeholder="// Напиши код и нажми ▶ Проверить
+
+void setup() {
+  
+}
+
+void loop() {
+  
+}"></textarea>
+    <div id="check-result"></div>
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+//  COMPONENT DEFINITIONS
+// ══════════════════════════════════════════════
+const DEFS = {
+  arduino:{
+    label:'Arduino UNO', w:90, h:130,
+    pins:[
+      {id:'5V',   x:0,  y:25,  lbl:'5V',   grp:'power'},
+      {id:'3V3',  x:0,  y:37,  lbl:'3.3V', grp:'power'},
+      {id:'GND1', x:0,  y:49,  lbl:'GND',  grp:'gnd'},
+      {id:'GND2', x:0,  y:61,  lbl:'GND',  grp:'gnd'},
+      {id:'A0',   x:0,  y:73,  lbl:'A0',   grp:'analog'},
+      {id:'A1',   x:0,  y:85,  lbl:'A1',   grp:'analog'},
+      {id:'A2',   x:0,  y:97,  lbl:'A2',   grp:'analog'},
+      {id:'A3',   x:0,  y:109, lbl:'A3',   grp:'analog'},
+      {id:'D13',  x:90, y:25,  lbl:'D13',  grp:'digital'},
+      {id:'D12',  x:90, y:37,  lbl:'D12',  grp:'digital'},
+      {id:'D11',  x:90, y:49,  lbl:'D11~', grp:'pwm'},
+      {id:'D10',  x:90, y:61,  lbl:'D10~', grp:'pwm'},
+      {id:'D9',   x:90, y:73,  lbl:'D9~',  grp:'pwm'},
+      {id:'D8',   x:90, y:85,  lbl:'D8',   grp:'digital'},
+      {id:'D7',   x:90, y:97,  lbl:'D7',   grp:'digital'},
+      {id:'D6',   x:90, y:109, lbl:'D6~',  grp:'pwm'},
+    ],
+    body:(c)=>`
+      <rect width="90" height="130" rx="5" fill="#1b6e2e" stroke="#2d9e45" stroke-width="1.5"/>
+      <rect x="4" y="4" width="82" height="122" rx="3" fill="none" stroke="rgba(255,255,255,.05)" stroke-width="1"/>
+      <rect x="2" y="97" width="18" height="27" rx="2" fill="#111"/>
+      <rect x="5" y="100" width="12" height="19" rx="1" fill="#1a1a1a" stroke="#2a2a2a"/>
+      <rect x="24" y="44" width="42" height="42" rx="3" fill="#111" stroke="#1a1a1a"/>
+      <text x="45" y="62" font-size="5" fill="#4a4a4a" text-anchor="middle" font-family="monospace">ATmega</text>
+      <text x="45" y="70" font-size="4.5" fill="#4a4a4a" text-anchor="middle" font-family="monospace">328P-PU</text>
+      <text x="45" y="14" font-size="6.5" fill="#5a5a5a" text-anchor="middle" font-family="monospace">ARDUINO</text>
+      <text x="45" y="26" font-size="10" fill="#c8ff00" text-anchor="middle" font-family="monospace" font-weight="bold">UNO</text>
+      <circle cx="76" cy="35" r="3.5" fill="#a00"/>
+      <circle cx="76" cy="35" r="2" fill="#f00" opacity=".7"/>
+      <text x="80" y="28" font-size="3.5" fill="#666" text-anchor="end" font-family="monospace">D13</text>
+      <text x="80" y="40" font-size="3.5" fill="#666" text-anchor="end" font-family="monospace">D12</text>
+      <text x="80" y="52" font-size="3.5" fill="#888" text-anchor="end" font-family="monospace">D11~</text>
+      <text x="80" y="64" font-size="3.5" fill="#888" text-anchor="end" font-family="monospace">D10~</text>
+      <text x="80" y="76" font-size="3.5" fill="#888" text-anchor="end" font-family="monospace">D9~</text>
+      <text x="80" y="88" font-size="3.5" fill="#666" text-anchor="end" font-family="monospace">D8</text>
+      <text x="80" y="100" font-size="3.5" fill="#666" text-anchor="end" font-family="monospace">D7</text>
+      <text x="80" y="112" font-size="3.5" fill="#888" text-anchor="end" font-family="monospace">D6~</text>
+      <text x="10" y="28" font-size="3.5" fill="#f66" text-anchor="start" font-family="monospace">5V</text>
+      <text x="10" y="40" font-size="3.5" fill="#f96" text-anchor="start" font-family="monospace">3V3</text>
+      <text x="10" y="52" font-size="3.5" fill="#66f" text-anchor="start" font-family="monospace">GND</text>
+      <text x="10" y="64" font-size="3.5" fill="#66f" text-anchor="start" font-family="monospace">GND</text>
+      <text x="10" y="76" font-size="3.5" fill="#888" text-anchor="start" font-family="monospace">A0</text>
+      <text x="10" y="88" font-size="3.5" fill="#888" text-anchor="start" font-family="monospace">A1</text>
+      <text x="10" y="100" font-size="3.5" fill="#888" text-anchor="start" font-family="monospace">A2</text>
+      <text x="10" y="112" font-size="3.5" fill="#888" text-anchor="start" font-family="monospace">A3</text>
+    `
+  },
+  breadboard:{
+    label:'Макетная плата', w:220, h:130,
+    pins:[
+      {id:'VCC+', x:8,   y:9,   lbl:'+5V',  grp:'power'},
+      {id:'GND-', x:8,   y:121, lbl:'GND',  grp:'gnd'},
+    ],
+    body:(c)=>{
+      let holes='';
+      for(let r=0;r<8;r++){
+        const actualY=r<4?r:r+1;
+        for(let col=0;col<28;col++){
+          const hx=22+col*7; const hy=25+actualY*9;
+          holes+=`<circle cx="${hx.toFixed(0)}" cy="${hy.toFixed(0)}" r="1.8" fill="#2a2a2a"/>`;
+        }
+      }
+      return `
+        <rect width="220" height="130" rx="5" fill="#ccc8aa" stroke="#a8a485" stroke-width="1.5"/>
+        <rect x="0" y="0" width="220" height="18" rx="5" fill="#d8d4bc"/>
+        <rect x="0" y="112" width="220" height="18" rx="5" fill="#d8d4bc"/>
+        <line x1="10" y1="9" x2="210" y2="9" stroke="rgba(200,30,30,.4)" stroke-width="2.5" stroke-dasharray="4,3"/>
+        <line x1="10" y1="121" x2="210" y2="121" stroke="rgba(30,30,200,.4)" stroke-width="2.5" stroke-dasharray="4,3"/>
+        <text x="6" y="13" font-size="5.5" fill="#c00" font-family="monospace" font-weight="bold">+</text>
+        <text x="6" y="125" font-size="5.5" fill="#00c" font-family="monospace" font-weight="bold">−</text>
+        <rect x="10" y="62" width="200" height="6" rx="2" fill="#bab690"/>
+        ${holes}
+      `;
+    }
+  },
+  led:{
+    label:'Светодиод', w:24, h:40,
+    pins:[
+      {id:'anode',   x:8,  y:40, lbl:'+ Анод'},
+      {id:'cathode', x:16, y:40, lbl:'− Катод'},
+    ],
+    body:(c)=>{
+      const clr={red:'#ff3a3a',green:'#2eee60',yellow:'#ffe020',blue:'#4d9fff',white:'#dde8ff'}[c]||'#ff3a3a';
+      return `
+        <rect x="4" y="22" width="16" height="10" rx="2" fill="${clr}" opacity=".2"/>
+        <ellipse cx="12" cy="13" rx="10" ry="12" fill="${clr}"/>
+        <ellipse cx="9.5" cy="10" rx="3.5" ry="4" fill="rgba(255,255,255,.28)"/>
+        <ellipse cx="12" cy="13" rx="10" ry="12" fill="none" stroke="${clr}" stroke-width="1" opacity=".5"/>
+        <line x1="8" y1="25" x2="8" y2="40" stroke="#777" stroke-width="1.5"/>
+        <line x1="16" y1="25" x2="16" y2="40" stroke="#777" stroke-width="1.5"/>
+        <line x1="6" y1="27" x2="10" y2="27" stroke="#777" stroke-width="1.2"/>
+        <line x1="14" y1="27" x2="18" y2="27" stroke="#777" stroke-width="1.2"/>
+        <text x="7" y="37" font-size="4" fill="${clr}" text-anchor="middle" font-family="monospace" opacity=".8">+</text>
+      `;
+    }
+  },
+  r220:{
+    label:'Резистор 220Ω', w:70, h:22,
+    pins:[
+      {id:'a', x:0,  y:11, lbl:'A'},
+      {id:'b', x:70, y:11, lbl:'B'},
+    ],
+    body:()=>`
+      <line x1="0" y1="11" x2="14" y2="11" stroke="#888" stroke-width="1.8"/>
+      <line x1="56" y1="11" x2="70" y2="11" stroke="#888" stroke-width="1.8"/>
+      <rect x="14" y="3" width="42" height="16" rx="5" fill="#d4a26a" stroke="#b8883a" stroke-width="1"/>
+      <rect x="20" y="3" width="4" height="16" fill="#c00" rx=".5"/>
+      <rect x="27" y="3" width="4" height="16" fill="#c00" rx=".5"/>
+      <rect x="34" y="3" width="4" height="16" fill="#5a3200" rx=".5"/>
+      <rect x="46" y="3" width="3" height="16" fill="#d4aa00" rx=".5"/>
+      <text x="35" y="26" font-size="5" fill="#666" text-anchor="middle" font-family="monospace">220Ω</text>
+    `
+  },
+  r10k:{
+    label:'Резистор 10кΩ', w:70, h:22,
+    pins:[
+      {id:'a', x:0,  y:11, lbl:'A'},
+      {id:'b', x:70, y:11, lbl:'B'},
+    ],
+    body:()=>`
+      <line x1="0" y1="11" x2="14" y2="11" stroke="#888" stroke-width="1.8"/>
+      <line x1="56" y1="11" x2="70" y2="11" stroke="#888" stroke-width="1.8"/>
+      <rect x="14" y="3" width="42" height="16" rx="5" fill="#d4a26a" stroke="#b8883a" stroke-width="1"/>
+      <rect x="20" y="3" width="4" height="16" fill="#c4a000" rx=".5"/>
+      <rect x="27" y="3" width="4" height="16" fill="#111" rx=".5"/>
+      <rect x="34" y="3" width="4" height="16" fill="#c4a000" rx=".5"/>
+      <rect x="46" y="3" width="3" height="16" fill="#d4aa00" rx=".5"/>
+      <text x="35" y="26" font-size="5" fill="#666" text-anchor="middle" font-family="monospace">10кΩ</text>
+    `
+  },
+  buzzer:{
+    label:'Пьезопищалка', w:36, h:40,
+    pins:[
+      {id:'vcc', x:10, y:40, lbl:'+'},
+      {id:'gnd', x:26, y:40, lbl:'−'},
+    ],
+    body:()=>`
+      <ellipse cx="18" cy="18" rx="16" ry="16" fill="#0f0f0f" stroke="#2a2a2a" stroke-width="1.5"/>
+      <ellipse cx="18" cy="18" rx="11" ry="11" fill="#1a1a1a" stroke="#333"/>
+      <ellipse cx="18" cy="18" rx="6" ry="6" fill="#222" stroke="#444"/>
+      <ellipse cx="18" cy="18" rx="2" ry="2" fill="#3a3a3a"/>
+      <line x1="10" y1="34" x2="10" y2="40" stroke="#888" stroke-width="1.8"/>
+      <line x1="26" y1="34" x2="26" y2="40" stroke="#888" stroke-width="1.8"/>
+      <text x="10" y="32" font-size="5" fill="#f55" text-anchor="middle" font-family="monospace">+</text>
+      <text x="26" y="32" font-size="5" fill="#88f" text-anchor="middle" font-family="monospace">−</text>
+    `
+  },
+  button:{
+    label:'Кнопка', w:32, h:32,
+    pins:[
+      {id:'p1', x:0,  y:10, lbl:'1'},
+      {id:'p2', x:32, y:10, lbl:'2'},
+    ],
+    body:()=>`
+      <rect x="4" y="4" width="24" height="24" rx="3" fill="#1a1a1a" stroke="#333" stroke-width="1.5"/>
+      <circle cx="16" cy="16" r="8" fill="#252525" stroke="#444" stroke-width="1.5"/>
+      <circle cx="16" cy="16" r="4.5" fill="#333"/>
+      <line x1="0" y1="10" x2="4" y2="10" stroke="#777" stroke-width="1.8"/>
+      <line x1="0" y1="22" x2="4" y2="22" stroke="#777" stroke-width="1.8"/>
+      <line x1="28" y1="10" x2="32" y2="10" stroke="#777" stroke-width="1.8"/>
+      <line x1="28" y1="22" x2="32" y2="22" stroke="#777" stroke-width="1.8"/>
+    `
+  },
+  potmeter:{
+    label:'Потенциометр', w:36, h:44,
+    pins:[
+      {id:'vcc', x:0,  y:40, lbl:'VCC'},
+      {id:'out', x:18, y:44, lbl:'OUT'},
+      {id:'gnd', x:36, y:40, lbl:'GND'},
+    ],
+    body:()=>`
+      <rect x="2" y="8" width="32" height="26" rx="3" fill="#1a1a1a" stroke="#2a2a2a" stroke-width="1.5"/>
+      <circle cx="18" cy="21" r="11" fill="#222" stroke="#3a3a3a" stroke-width="1.5"/>
+      <circle cx="18" cy="21" r="6" fill="#2a2a2a"/>
+      <line x1="18" y1="11" x2="18" y2="17" stroke="#c8ff00" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="2" y1="34" x2="2" y2="40" stroke="#888" stroke-width="1.8"/>
+      <line x1="18" y1="34" x2="18" y2="44" stroke="#888" stroke-width="1.8"/>
+      <line x1="34" y1="34" x2="34" y2="40" stroke="#888" stroke-width="1.8"/>
+      <text x="2" y="44" font-size="4" fill="#f55" text-anchor="middle" font-family="monospace">+</text>
+      <text x="34" y="44" font-size="4" fill="#66f" text-anchor="end" font-family="monospace">G</text>
+    `
+  },
+  photoresistor:{
+    label:'Фоторезистор', w:60, h:22,
+    pins:[
+      {id:'a', x:0,  y:11, lbl:'A'},
+      {id:'b', x:60, y:11, lbl:'B'},
+    ],
+    body:()=>`
+      <line x1="0" y1="11" x2="10" y2="11" stroke="#888" stroke-width="1.8"/>
+      <line x1="50" y1="11" x2="60" y2="11" stroke="#888" stroke-width="1.8"/>
+      <rect x="10" y="3" width="40" height="16" rx="5" fill="#d4a26a" stroke="#b8883a"/>
+      <text x="30" y="14" font-size="6.5" fill="#3a3a3a" text-anchor="middle" font-family="monospace" font-weight="bold">LDR</text>
+      <path d="M9 -3 L15 3" stroke="#ffdd00" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M17 -3 L23 3" stroke="#ffdd00" stroke-width="1.5" stroke-linecap="round"/>
+    `
+  },
+  dht11:{
+    label:'Датчик DHT11', w:40, h:44,
+    pins:[
+      {id:'vcc',  x:8,  y:44, lbl:'VCC'},
+      {id:'data', x:20, y:44, lbl:'DATA'},
+      {id:'gnd',  x:32, y:44, lbl:'GND'},
+    ],
+    body:()=>`
+      <rect x="0" y="0" width="40" height="36" rx="4" fill="#1650c8" stroke="#2060e8" stroke-width="1.5"/>
+      <rect x="4" y="4" width="32" height="28" rx="2" fill="#1040a0"/>
+      <text x="20" y="20" font-size="6" fill="#6080d0" text-anchor="middle" font-family="monospace">DHT</text>
+      <text x="20" y="30" font-size="7" fill="#88aaff" text-anchor="middle" font-family="monospace" font-weight="bold">11</text>
+      <rect x="3" y="34" width="34" height="4" fill="#0c3090"/>
+      <line x1="8"  y1="36" x2="8"  y2="44" stroke="#888" stroke-width="1.8"/>
+      <line x1="20" y1="36" x2="20" y2="44" stroke="#888" stroke-width="1.8"/>
+      <line x1="32" y1="36" x2="32" y2="44" stroke="#888" stroke-width="1.8"/>
+    `
+  }
+};
+
+// ══════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════
+const state = {
+  comps: new Map(),
+  wires: [],
+  wireMode: false,
+  selPin: null,      // {cid, pid}
+  selComp: null,
+  dragging: null,    // {cid, ox, oy}
+  color: '#c8ff00',
+  nextId: 1
+};
+
+const WIRE_COLORS = [
+  {c:'#c8ff00',n:'Зел'},
+  {c:'#ff5252',n:'Кра'},
+  {c:'#4d9fff',n:'Син'},
+  {c:'#ff9500',n:'Ора'},
+  {c:'#ffffff',n:'Бел'},
+  {c:'#ff44cc',n:'Роз'},
+];
+
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
+const svg = document.getElementById('circuit-svg');
+const wiresLayer = document.getElementById('wires-layer');
+const compsLayer = document.getElementById('comps-layer');
+const previewLayer = document.getElementById('preview-layer');
+
+// Build color swatches
+const swatchRow = document.getElementById('color-swatches');
+WIRE_COLORS.forEach(({c,n},i)=>{
+  const d=document.createElement('div');
+  d.className='wire-swatch'+(i===0?' sel':'');
+  d.style.background=c;
+  d.title=n;
+  d.onclick=()=>{
+    state.color=c;
+    swatchRow.querySelectorAll('.wire-swatch').forEach(s=>s.classList.remove('sel'));
+    d.classList.add('sel');
+  };
+  swatchRow.appendChild(d);
+});
+
+// Tab key support in code editor
+document.getElementById('code-editor').addEventListener('keydown',e=>{
+  if(e.key==='Tab'){
+    e.preventDefault();
+    const ta=e.target;
+    const s=ta.selectionStart,en=ta.selectionEnd;
+    ta.value=ta.value.substring(0,s)+'  '+ta.value.substring(en);
+    ta.selectionStart=ta.selectionEnd=s+2;
+  }
+});
+
+// ══════════════════════════════════════════════
+//  COORDINATE HELPERS
+// ══════════════════════════════════════════════
+function svgPt(e){
+  const r=svg.getBoundingClientRect();
+  const cx=e.touches?e.touches[0].clientX:e.clientX;
+  const cy=e.touches?e.touches[0].clientY:e.clientY;
+  return {x:cx-r.left, y:cy-r.top};
+}
+
+function pinWorld(cid,pid){
+  const c=state.comps.get(cid);
+  const pin=DEFS[c.type].pins.find(p=>p.id===pid);
+  return {x:c.x+pin.x, y:c.y+pin.y};
+}
+
+// ══════════════════════════════════════════════
+//  RENDER COMPONENT
+// ══════════════════════════════════════════════
+function renderComp(c){
+  let el=document.getElementById('c_'+c.id);
+  if(!el){
+    el=document.createElementNS('http://www.w3.org/2000/svg','g');
+    el.id='c_'+c.id;
+    el.classList.add('comp-g');
+    el.setAttribute('data-cid',c.id);
+    compsLayer.appendChild(el);
+  }
+  const def=DEFS[c.type];
+  el.setAttribute('transform',`translate(${c.x},${c.y})`);
+  if(state.wireMode) el.classList.add('wire-mode');
+  else el.classList.remove('wire-mode');
+
+  const bodyHtml=typeof def.body==='function'?def.body(c.color||'red'):'';
+  const pinsHtml=def.pins.map(p=>`
+    <g class="pin-group" data-cid="${c.id}" data-pid="${p.id}">
+      <circle class="pin-hit" cx="${p.x}" cy="${p.y}" r="7" data-cid="${c.id}" data-pid="${p.id}"/>
+      <circle class="pin-dot" id="pd_${c.id}_${p.id}" cx="${p.x}" cy="${p.y}" r="3.5"/>
+      <circle class="pin-ring" id="pr_${c.id}_${p.id}" cx="${p.x}" cy="${p.y}" r="7"/>
+    </g>
+  `).join('');
+
+  // Delete button (×)
+  const delHtml=`<g class="del-btn" onclick="deleteComp('${c.id}')">
+    <circle cx="${def.w+8}" cy="-8" r="7" fill="#1a1a1a" stroke="#333"/>
+    <text x="${def.w+8}" y="-5" font-size="10" fill="#888" text-anchor="middle" font-family="sans-serif">×</text>
+  </g>`;
+
+  // Selection ring
+  const selHtml=`<rect class="comp-sel-ring" x="-4" y="-4" width="${def.w+8}" height="${def.h+8}" rx="6" id="sr_${c.id}"/>`;
+
+  el.innerHTML=bodyHtml+pinsHtml+delHtml+selHtml;
+  if(state.selComp===c.id) el.classList.add('selected');
+  else el.classList.remove('selected');
+}
+
+// ══════════════════════════════════════════════
+//  RENDER WIRE
+// ══════════════════════════════════════════════
+function wirePath(x1,y1,x2,y2){
+  const mx=(x1+x2)/2;
+  const my=(y1+y2)/2;
+  // Smooth bezier route
+  const dx=Math.abs(x2-x1),dy=Math.abs(y2-y1);
+  if(dx>dy*1.5) return `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`;
+  if(dy>dx*1.5) return `M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}`;
+  return `M${x1},${y1} C${mx},${y1} ${x2},${my} ${x2},${y2}`;
+}
+
+function renderWire(w){
+  let el=document.getElementById('w_'+w.id);
+  if(!el){
+    el=document.createElementNS('http://www.w3.org/2000/svg','path');
+    el.id='w_'+w.id;
+    el.classList.add('wire-path');
+    el.setAttribute('data-wid',w.id);
+    wiresLayer.appendChild(el);
+  }
+  const a=pinWorld(w.from.cid,w.from.pid);
+  const b=pinWorld(w.to.cid,w.to.pid);
+  el.setAttribute('d',wirePath(a.x,a.y,b.x,b.y));
+  el.style.stroke=w.color||'#c8ff00';
+  el.style.opacity='.75';
+}
+
+function rerenderAll(){
+  state.comps.forEach(c=>renderComp(c));
+  state.wires.forEach(w=>renderWire(w));
+}
+
+// ══════════════════════════════════════════════
+//  ADD COMPONENT
+// ══════════════════════════════════════════════
+function addComp(type,color){
+  if(!DEFS[type]) return;
+  const id=state.nextId++;
+  const cx=svg.getBoundingClientRect();
+  // Offset each new component so they don't stack
+  const off=(state.comps.size%5)*30;
+  const c={
+    id,type,color,
+    x: Math.max(20, cx.width/2-50+off),
+    y: Math.max(20, cx.height/2-65+off),
+  };
+  state.comps.set(id,c);
+  renderComp(c);
+}
+
+// ══════════════════════════════════════════════
+//  DELETE COMPONENT
+// ══════════════════════════════════════════════
+function deleteComp(id){
+  id=parseInt(id);
+  const el=document.getElementById('c_'+id);
+  if(el) el.remove();
+  // Remove connected wires
+  state.wires=state.wires.filter(w=>{
+    if(w.from.cid===id||w.to.cid===id){
+      const el=document.getElementById('w_'+w.id);
+      if(el) el.remove();
+      return false;
+    }
+    return true;
+  });
+  state.comps.delete(id);
+  if(state.selComp===id) state.selComp=null;
+  if(state.selPin?.cid===id) clearPinSel();
+}
+
+// ══════════════════════════════════════════════
+//  WIRE MODE
+// ══════════════════════════════════════════════
+function toggleWireMode(){
+  state.wireMode=!state.wireMode;
+  const btn=document.getElementById('wire-btn');
+  btn.classList.toggle('active',state.wireMode);
+  btn.textContent=state.wireMode?'● Провода':'○ Провода';
+  document.getElementById('canvas-wrap').classList.toggle('wire-mode',state.wireMode);
+  compsLayer.querySelectorAll('.comp-g').forEach(g=>
+    g.classList.toggle('wire-mode',state.wireMode)
+  );
+  if(!state.wireMode) clearPinSel();
+}
+
+function clearPinSel(){
+  if(state.selPin){
+    const {cid,pid}=state.selPin;
+    const pd=document.getElementById(`pd_${cid}_${pid}`);
+    const pr=document.getElementById(`pr_${cid}_${pid}`);
+    if(pd) pd.classList.remove('hi');
+    if(pr) pr.classList.remove('hi');
+  }
+  state.selPin=null;
+  previewLayer.innerHTML='';
+}
+
+// ══════════════════════════════════════════════
+//  EVENTS
+// ══════════════════════════════════════════════
+// Wire preview line tracking
+svg.addEventListener('pointermove',e=>{
+  if(!state.selPin) return;
+  const pt=svgPt(e);
+  const a=pinWorld(state.selPin.cid,state.selPin.pid);
+  previewLayer.innerHTML=`<path class="wire-preview" stroke="${state.color}" d="${wirePath(a.x,a.y,pt.x,pt.y)}"/>`;
+});
+
+svg.addEventListener('pointerdown',e=>{
+  const pinHit=e.target.closest('[data-pid]');
+  const compG=e.target.closest('[data-cid]');
+  const wireEl=e.target.closest('[data-wid]');
+
+  // Delete wire on click
+  if(wireEl && !state.wireMode && !pinHit){
+    const wid=parseInt(wireEl.getAttribute('data-wid'));
+    wireEl.remove();
+    state.wires=state.wires.filter(w=>w.id!==wid);
+    e.stopPropagation(); return;
+  }
+
+  if(state.wireMode && pinHit){
+    e.stopPropagation();
+    const cid=parseInt(pinHit.getAttribute('data-cid'));
+    const pid=pinHit.getAttribute('data-pid');
+    if(!state.selPin){
+      // First pin
+      state.selPin={cid,pid};
+      const pd=document.getElementById(`pd_${cid}_${pid}`);
+      const pr=document.getElementById(`pr_${cid}_${pid}`);
+      if(pd) pd.classList.add('hi');
+      if(pr) pr.classList.add('hi');
+    } else {
+      // Second pin — create wire
+      const from=state.selPin;
+      if(from.cid===cid && from.pid===pid){ clearPinSel(); return; }
+      // Check duplicate
+      const dup=state.wires.find(w=>
+        (w.from.cid===from.cid&&w.from.pid===from.pid&&w.to.cid===cid&&w.to.pid===pid)||
+        (w.to.cid===from.cid&&w.to.pid===from.pid&&w.from.cid===cid&&w.from.pid===pid)
+      );
+      if(!dup){
+        const w={id:state.nextId++,from:{cid:from.cid,pid:from.pid},to:{cid,pid},color:state.color};
+        state.wires.push(w);
+        renderWire(w);
+      }
+      clearPinSel();
+    }
+    return;
+  }
+
+  // Component drag
+  if(!state.wireMode && compG && !pinHit){
+    const cid=parseInt(compG.getAttribute('data-cid'));
+    if(!cid) return;
+    const c=state.comps.get(cid);
+    if(!c) return;
+    const pt=svgPt(e);
+    state.dragging={cid,ox:pt.x-c.x,oy:pt.y-c.y};
+    state.selComp=cid;
+    rerenderAll();
+    svg.setPointerCapture(e.pointerId);
+    e.stopPropagation();
+  } else if(!compG){
+    state.selComp=null;
+    rerenderAll();
+  }
+});
+
+svg.addEventListener('pointermove',e=>{
+  if(!state.dragging) return;
+  const {cid,ox,oy}=state.dragging;
+  const c=state.comps.get(cid);
+  if(!c) return;
+  const pt=svgPt(e);
+  c.x=Math.max(0,pt.x-ox);
+  c.y=Math.max(0,pt.y-oy);
+  renderComp(c);
+  // Re-render wires connected to this comp
+  state.wires.filter(w=>w.from.cid===cid||w.to.cid===cid).forEach(w=>renderWire(w));
+});
+
+svg.addEventListener('pointerup',()=>{ state.dragging=null; });
+
+// ══════════════════════════════════════════════
+//  CLEAR
+// ══════════════════════════════════════════════
+function clearAll(){
+  if(state.comps.size===0 && state.wires.length===0) return;
+  if(!confirm('Очистить всю схему?')) return;
+  wiresLayer.innerHTML='';
+  compsLayer.innerHTML='';
+  previewLayer.innerHTML='';
+  state.comps.clear();
+  state.wires=[];
+  state.selPin=null;
+  state.selComp=null;
+  state.dragging=null;
+  clearPinSel();
+}
+
+// ══════════════════════════════════════════════
+//  TASK from URL params
+// ══════════════════════════════════════════════
+const _urlParams = new URLSearchParams(location.search);
+const _taskGoal  = decodeURIComponent(_urlParams.get('task') || '');
+const _taskTitle = decodeURIComponent(_urlParams.get('title') || '');
+
+if (_taskGoal) {
+  const banner = document.getElementById('task-banner');
+  const taskEl = document.getElementById('task-text');
+  taskEl.innerHTML = _taskTitle
+    ? `<strong>${_taskTitle}:</strong> ${_taskGoal}`
+    : _taskGoal;
+  banner.style.display = 'flex';
+}
+
+// ══════════════════════════════════════════════
+//  CIRCUIT DESCRIPTION (for AI prompt)
+// ══════════════════════════════════════════════
+function describeCircuit(){
+  const comps=[...state.comps.values()].map(c=>{
+    const d=DEFS[c.type];
+    return `• ${d.label}${c.color?` (${c.color})`:''}  [ID:${c.id}]`;
+  }).join('\n')||'Нет компонентов';
+
+  const wires=state.wires.map(w=>{
+    const fc=state.comps.get(w.from.cid), tc=state.comps.get(w.to.cid);
+    if(!fc||!tc) return null;
+    const fd=DEFS[fc.type], td=DEFS[tc.type];
+    const fp=fd.pins.find(p=>p.id===w.from.pid);
+    const tp=td.pins.find(p=>p.id===w.to.pid);
+    return `• ${fd.label}[ID:${w.from.cid}] вывод «${fp?.lbl||w.from.pid}»  →  ${td.label}[ID:${w.to.cid}] вывод «${tp?.lbl||w.to.pid}»`;
+  }).filter(Boolean).join('\n')||'Нет соединений';
+
+  return `КОМПОНЕНТЫ:\n${comps}\n\nСОЕДИНЕНИЯ:\n${wires}`;
+}
+
+// ══════════════════════════════════════════════
+//  AI CODE CHECK
+// ══════════════════════════════════════════════
+async function checkCode(){
+  const code=document.getElementById('code-editor').value.trim();
+  const res=document.getElementById('check-result');
+
+  if(!code){
+    res.style.display='block';
+    res.className='err';
+    res.textContent='⚠ Напиши код перед проверкой!';
+    return;
+  }
+  if(state.comps.size===0){
+    res.style.display='block';
+    res.className='warn';
+    res.textContent='⚠ Добавь компоненты на схему, затем нажми Проверить.';
+    return;
+  }
+
+  res.style.display='block';
+  res.className='loading';
+  res.textContent='⏳ Анализирую схему и код...';
+
+  const btn=document.getElementById('check-btn');
+  btn.disabled=true;
+
+  const circuit=describeCircuit();
+  const taskSection = _taskGoal
+    ? `\nЗАДАНИЕ СТУДЕНТА:\n${_taskGoal}\n\nОбязательно проверь, выполнено ли это задание!\n`
+    : '';
+
+  const prompt=`Ты — эксперт-преподаватель по Arduino. Проверь схему и код студента.
+${taskSection}
+СХЕМА:
+${circuit}
+
+КОД (Arduino C++):
+\`\`\`cpp
+${code}
+\`\`\`
+
+Задачи:
+1. Соответствуют ли пины в коде схеме (правильные номера пинов)?
+2. Все ли компоненты подключены корректно (правильная полярность LED, наличие резистора, GND)?
+3. Правильно ли используются функции (pinMode, digitalWrite, analogWrite, tone и т.д.)?
+4. Есть ли логические ошибки в loop()?
+5. Безопасна ли схема (например, нужен ли резистор для LED)?${_taskGoal ? '\n6. Выполнено ли задание студента?' : ''}
+
+Дай конкретный дружелюбный ответ на русском языке. Используй ✅ для верного, ⚠️ для предупреждений, ❌ для ошибок. До 200 слов.`;
+
+  try{
+    const resp=await fetch('https://openrouter.ai/api/v1/chat/completions',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer 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',
+        'HTTP-Referer':'https://github.com/redjex/marik',
+        'X-Title':'Arduino Learn'
+      },
+      body:JSON.stringify({
+        model:'google/gemini-2.0-flash-001',
+        max_tokens:600,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    const data=await resp.json();
+    const text=data.choices?.[0]?.message?.content||'Нет ответа.';
+
+    // Determine class by content
+    const hasErr=text.includes('❌');
+    const hasWarn=text.includes('⚠️')||text.includes('⚠');
+    res.className=hasErr?'err':hasWarn?'warn':'ok';
+    res.innerHTML=text.replace(/\n/g,'<br>');
+  } catch(err){
+    res.className='err';
+    res.textContent='❌ Ошибка подключения к AI. Проверь интернет-соединение.';
+  } finally {
+    btn.disabled=false;
+  }
+}
+
+// Expose globals needed by inline onclick handlers
+window.addComp=addComp;
+window.deleteComp=deleteComp;
+window.toggleWireMode=toggleWireMode;
+window.clearAll=clearAll;
+window.checkCode=checkCode;
+
+</script>
+</body>
+</html>
